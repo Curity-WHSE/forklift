@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>BBW Warehouse</title>
+<title>BBW Inspection</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
 :root{--bg:#0d0f12;--sur:#161a1f;--sur2:#1d2128;--bdr:#252b33;--gold:#c9a84c;--gdim:#7a6030;--txt:#e8e4dc;--mut:#6b7280;--red:#e05252;--grn:#52c97a;--blu:#5293c9;--org:#c98552}
@@ -162,37 +162,54 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,sans
 </style>
 </head>
 <body>
-<div class="pin-page">
-  <div class="pin-logo">BBW</div>
-  <div class="pin-sub">Warehouse Management</div>
-  <div class="pin-card" id="step1">
-    <h2>Select Your Name</h2>
-    <div class="namelist" id="namelist"></div>
-    <div class="perr" id="err1"></div>
-    <button class="k kgo" style="width:100%;border-radius:7px;padding:13px;margin-top:4px" onclick="goStep2()">Next →</button>
-  </div>
-  <div class="pin-card hidden" id="step2">
-    <h2 id="step2title">Enter PIN</h2>
-    <div id="numeric-ui">
-      <div class="pdots" id="pdots"></div>
-      <div class="kpad">
-        <div class="k" onclick="kp('1')">1</div><div class="k" onclick="kp('2')">2</div><div class="k" onclick="kp('3')">3</div>
-        <div class="k" onclick="kp('4')">4</div><div class="k" onclick="kp('5')">5</div><div class="k" onclick="kp('6')">6</div>
-        <div class="k" onclick="kp('7')">7</div><div class="k" onclick="kp('8')">8</div><div class="k" onclick="kp('9')">9</div>
-        <div class="k kdel" onclick="kp('del')">⌫</div><div class="k" onclick="kp('0')">0</div><div class="k kdel" onclick="kp('clr')">✕</div>
-        <div class="k kgo" style="grid-column:span 3" onclick="doLogin()">Login</div>
+<div class="insp-page">
+  <div id="form-wrap">
+    <div class="insp-hdr">
+      <div class="logo" style="display:inline-block;margin-bottom:8px">BBW</div>
+      <h1>Pre-Shift Inspection</h1>
+      <p>Brunswick Bierworks · Warehouse</p>
+      <div class="equip-pill" id="equip-pill">Loading…</div>
+    </div>
+
+    <div class="icard">
+      <h2>Driver Info</h2>
+      <div class="fg"><label class="fl">Your Name</label><input class="fi" id="drv-name" placeholder="First and last name"></div>
+      <div class="fg"><label class="fl">Shift</label>
+        <select class="fs" id="drv-shift">
+          <option value="">-- Select shift --</option>
+          <option>Day (6am–2pm)</option><option>Afternoon (2pm–10pm)</option><option>Night (10pm–6am)</option>
+        </select>
       </div>
     </div>
-    <div id="alpha-ui" class="hidden">
-      <input class="pin-alpha" type="password" id="alpha" placeholder="Password" maxlength="32" onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="k kgo" style="width:100%;border-radius:7px;padding:13px" onclick="doLogin()">Login</button>
+
+    <div class="icard">
+      <h2>🔑 Key Off — Visual Check</h2>
+      <div id="ko-list"></div>
     </div>
-    <div class="perr" id="err2"></div>
-    <button class="k" style="width:100%;margin-top:8px;border-radius:7px;padding:9px;font-size:.78rem;border:1px solid var(--bdr)" onclick="back()">← Back</button>
+
+    <div class="icard">
+      <h2>🚀 Key On — Operational Check</h2>
+      <div id="kon-list"></div>
+    </div>
+
+    <div class="icard">
+      <h2>Notes</h2>
+      <textarea class="fi" id="notes" rows="3" placeholder="Any defects or comments…" style="resize:vertical"></textarea>
+    </div>
+
+    <button class="sub-btn" id="sub-btn" onclick="submitForm()">Submit Inspection</button>
+  </div>
+
+  <div class="ok-screen" id="ok-screen">
+    <div style="font-size:3.5rem">✅</div>
+    <h2>Submitted!</h2>
+    <p id="ok-msg">Inspection saved.</p>
+    <p style="margin-top:6px">Drive safe!</p>
+    <button class="btn btn-out" style="margin-top:20px;padding:10px 20px" onclick="resetForm()">Submit Another</button>
   </div>
 </div>
 <script>
-const ROOT='';
+const ROOT='../';
 const SURL='https://xrxuacrzcnsjrriidobs.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeHVhY3J6Y25zanJyaWlkb2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzE4MzksImV4cCI6MjA5NjI0NzgzOX0._AhK7L6NrCFazVcNpsY43z0J9VpktJ6cHYoRBVOAwVM';
 const APP='https://curity-whse.github.io/forklift';
@@ -246,63 +263,73 @@ function toast(msg,type){
   clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(20px)';},3000);
 }
 
-let sel=null,pin='';
-function renderNames(){
-  const list=document.getElementById('namelist');
-  list.innerHTML='';
-  getUsers().forEach(u=>{
-    const b=document.createElement('button');
-    b.className='nbtn';b.textContent=u.name;
-    b.onclick=()=>{document.querySelectorAll('.nbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');sel=u;document.getElementById('err1').textContent='';}
-    list.appendChild(b);
+const KO_ITEMS=['Check for oil leaks','Visible damage or cracks','Hydraulic fluid level','Battery / fuel level','Tires and wheels','Forks condition','Overhead guard intact','Nameplate visible','Fire extinguisher present'];
+const KON_ITEMS=['Seat belt functions','Horn works','Lights and strobes','Brakes working','Steering smooth','Lift and tilt smooth','Hour meter readable','Reverse alarm works','Safety devices OK'];
+
+let equipId='UNKNOWN',koState={},konState={};
+
+window.onload=()=>{
+  const p=new URLSearchParams(window.location.search);
+  equipId=p.get('equip')||'UNKNOWN';
+  document.getElementById('equip-pill').textContent=equipId;
+  buildList('ko-list',KO_ITEMS,koState);
+  buildList('kon-list',KON_ITEMS,konState);
+};
+
+function buildList(cid,items,state){
+  const c=document.getElementById(cid);c.innerHTML='';
+  items.forEach(item=>{
+    state[item]=null;
+    const row=document.createElement('div');row.className='crow';
+    row.innerHTML='<div class="clbl">'+item+'</div><div class="copts">'
+      +'<button class="ck" onclick="setCk(this,''+item.replace(/'/g,"\'")+"',"+JSON.stringify(state)+",'ok')">OK</button>"
+      +'<button class="ck" onclick="setCk(this,''+item.replace(/'/g,"\'")+"',"+JSON.stringify(state)+",'fail')">FAIL</button>"
+      +'<button class="ck" onclick="setCk(this,''+item.replace(/'/g,"\'")+"',"+JSON.stringify(state)+",'na')">N/A</button>"
+      +'</div>';
+    c.appendChild(row);
   });
 }
-function goStep2(){
-  if(!sel){document.getElementById('err1').textContent='Select a name first';return;}
-  document.getElementById('step1').classList.add('hidden');
-  document.getElementById('step2').classList.remove('hidden');
-  document.getElementById('step2title').textContent='Hi '+sel.name.split(' ')[0]+'!';
-  pin='';
-  if(sel.role==='admin'){
-    document.getElementById('numeric-ui').classList.add('hidden');
-    document.getElementById('alpha-ui').classList.remove('hidden');
-    setTimeout(()=>document.getElementById('alpha').focus(),80);
-  } else {
-    document.getElementById('numeric-ui').classList.remove('hidden');
-    document.getElementById('alpha-ui').classList.add('hidden');
-  }
-  renderDots();
+
+function setCk(btn,item,stateRef,val){
+  // Find which state object
+  const inKO=document.getElementById('ko-list').contains(btn);
+  const state=inKO?koState:konState;
+  state[item]=val;
+  const opts=btn.parentElement.querySelectorAll('.ck');
+  opts.forEach(b=>b.className='ck');
+  btn.classList.add(val+'-s');
 }
-function kp(v){
-  if(v==='del')pin=pin.slice(0,-1);
-  else if(v==='clr')pin='';
-  else if(pin.length<8)pin+=v;
-  renderDots();
-  document.getElementById('err2').textContent='';
+
+async function submitForm(){
+  const name=document.getElementById('drv-name').value.trim();
+  const shift=document.getElementById('drv-shift').value;
+  if(!name){toast('Enter your name','error');return;}
+  if(!shift){toast('Select your shift','error');return;}
+  const allDone=[...Object.values(koState),...Object.values(konState)].every(v=>v!==null);
+  if(!allDone){toast('Complete all checklist items','error');return;}
+  const anyFail=Object.values(koState).includes('fail')||Object.values(konState).includes('fail');
+  const btn=document.getElementById('sub-btn');btn.disabled=true;btn.textContent='Submitting…';
+  const {error}=await db.from('inspections').insert([{
+    equipment_id:equipId,driver_name:name,shift:shift,
+    keyoff:koState,keyon:konState,passed:!anyFail,
+    notes:document.getElementById('notes').value.trim()||null
+  }]);
+  btn.disabled=false;btn.textContent='Submit Inspection';
+  if(error){toast('Error: '+error.message,'error');return;}
+  document.getElementById('ok-msg').textContent=equipId+' · '+name;
+  document.getElementById('form-wrap').style.display='none';
+  document.getElementById('ok-screen').style.display='block';
 }
-function renderDots(){
-  const c=document.getElementById('pdots');c.innerHTML='';
-  for(let i=0;i<8;i++){const d=document.createElement('div');d.className='pdot'+(i<pin.length?' on':'');c.appendChild(d);}
+
+function resetForm(){
+  document.getElementById('drv-name').value='';
+  document.getElementById('drv-shift').value='';
+  document.getElementById('notes').value='';
+  koState={};konState={};
+  buildList('ko-list',KO_ITEMS,koState);
+  buildList('kon-list',KON_ITEMS,konState);
+  document.getElementById('form-wrap').style.display='block';
+  document.getElementById('ok-screen').style.display='none';
 }
-function back(){
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('err2').textContent='';
-  pin='';
-}
-function doLogin(){
-  const entered=sel.role==='admin'?document.getElementById('alpha').value:pin;
-  const u=getUsers().find(x=>x.id===sel.id);
-  if(!u||u.pin!==entered){
-    document.getElementById('err2').textContent='Wrong PIN';
-    pin='';renderDots();
-    if(sel.role==='admin')document.getElementById('alpha').value='';
-    return;
-  }
-  setSess(u);
-  window.location.href=u.role==='admin'?'pages/admin.html':'pages/app.html';
-}
-renderNames();renderDots();
-const s=getSess();if(s)window.location.href=s.role==='admin'?'pages/admin.html':'pages/app.html';
 </script>
 </body></html>

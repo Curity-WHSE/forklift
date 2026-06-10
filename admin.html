@@ -3,8 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>BBW Warehouse</title>
+<title>BBW Admin</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
 <style>
 :root{--bg:#0d0f12;--sur:#161a1f;--sur2:#1d2128;--bdr:#252b33;--gold:#c9a84c;--gdim:#7a6030;--txt:#e8e4dc;--mut:#6b7280;--red:#e05252;--grn:#52c97a;--blu:#5293c9;--org:#c98552}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -162,37 +163,109 @@ body{background:var(--bg);color:var(--txt);font-family:'Segoe UI',system-ui,sans
 </style>
 </head>
 <body>
-<div class="pin-page">
-  <div class="pin-logo">BBW</div>
-  <div class="pin-sub">Warehouse Management</div>
-  <div class="pin-card" id="step1">
-    <h2>Select Your Name</h2>
-    <div class="namelist" id="namelist"></div>
-    <div class="perr" id="err1"></div>
-    <button class="k kgo" style="width:100%;border-radius:7px;padding:13px;margin-top:4px" onclick="goStep2()">Next →</button>
+<div class="hdr">
+  <div class="hdr-l">
+    <div class="logo">BBW</div>
+    <span class="hdr-title">Admin</span>
   </div>
-  <div class="pin-card hidden" id="step2">
-    <h2 id="step2title">Enter PIN</h2>
-    <div id="numeric-ui">
-      <div class="pdots" id="pdots"></div>
-      <div class="kpad">
-        <div class="k" onclick="kp('1')">1</div><div class="k" onclick="kp('2')">2</div><div class="k" onclick="kp('3')">3</div>
-        <div class="k" onclick="kp('4')">4</div><div class="k" onclick="kp('5')">5</div><div class="k" onclick="kp('6')">6</div>
-        <div class="k" onclick="kp('7')">7</div><div class="k" onclick="kp('8')">8</div><div class="k" onclick="kp('9')">9</div>
-        <div class="k kdel" onclick="kp('del')">⌫</div><div class="k" onclick="kp('0')">0</div><div class="k kdel" onclick="kp('clr')">✕</div>
-        <div class="k kgo" style="grid-column:span 3" onclick="doLogin()">Login</div>
-      </div>
-    </div>
-    <div id="alpha-ui" class="hidden">
-      <input class="pin-alpha" type="password" id="alpha" placeholder="Password" maxlength="32" onkeydown="if(event.key==='Enter')doLogin()">
-      <button class="k kgo" style="width:100%;border-radius:7px;padding:13px" onclick="doLogin()">Login</button>
-    </div>
-    <div class="perr" id="err2"></div>
-    <button class="k" style="width:100%;margin-top:8px;border-radius:7px;padding:9px;font-size:.78rem;border:1px solid var(--bdr)" onclick="back()">← Back</button>
+  <div style="display:flex;align-items:center;gap:9px">
+    <span class="user-pill" style="background:var(--gold)">ADMIN</span>
+    <button class="logout-btn" onclick="logout()">Logout</button>
   </div>
 </div>
+<div class="main">
+
+  <!-- DB Stats -->
+  <div class="card">
+    <div class="card-hdr"><h2>📊 Live Database</h2><button class="btn btn-out" style="font-size:.7rem;padding:4px 9px" onclick="loadStats()">↻ Refresh</button></div>
+    <div class="card-body">
+      <div class="sgrid">
+        <div class="sbox"><div class="sv" id="st-staged">—</div><div class="sl">Staged Active</div></div>
+        <div class="sbox"><div class="sv" id="st-tx">—</div><div class="sl">Transactions</div></div>
+        <div class="sbox"><div class="sv" id="st-inv">—</div><div class="sl">Inventory SKUs</div></div>
+        <div class="sbox"><div class="sv" id="st-insp">—</div><div class="sl">Inspections</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Users -->
+  <div class="card">
+    <div class="card-hdr"><h2>👤 Users & PINs</h2><button class="btn btn-gold" style="font-size:.72rem;padding:5px 11px" onclick="openAddUser()">+ Add</button></div>
+    <div class="card-body" id="user-list"></div>
+  </div>
+
+  <!-- Aisles -->
+  <div class="card">
+    <div class="card-hdr"><h2>📦 Staging Aisles</h2><button class="btn btn-gold" style="font-size:.72rem;padding:5px 11px" onclick="openAddAisle()">+ Add</button></div>
+    <div class="card-body" id="aisle-list"></div>
+  </div>
+
+  <!-- Equipment QR Codes -->
+  <div class="card">
+    <div class="card-hdr"><h2>🔲 Vehicle QR Codes</h2></div>
+    <div class="card-body">
+      <p style="font-size:.75rem;color:var(--mut);margin-bottom:12px">Drivers scan to access the inspection form — no login needed.</p>
+      <div class="qgrid" id="equip-qr"></div>
+    </div>
+  </div>
+
+  <!-- Aisle QR Codes -->
+  <div class="card">
+    <div class="card-hdr"><h2>🔲 Aisle QR Codes</h2></div>
+    <div class="card-body">
+      <p style="font-size:.75rem;color:var(--mut);margin-bottom:12px">Stagers/supervisors scan to go straight to that aisle.</p>
+      <div class="qgrid" id="aisle-qr"></div>
+    </div>
+  </div>
+
+  <div style="height:20px"></div>
+  <a href="app.html" style="display:block;text-align:center;color:var(--gold);font-size:.82rem;padding:12px;border:1px solid var(--bdr);border-radius:8px;text-decoration:none">← Back to Warehouse App</a>
+
+</div>
+
+<!-- User modal -->
+<div class="ov" id="ov-user" onclick="if(event.target===this)closeOv('user')">
+  <div class="sheet" style="max-height:75dvh">
+    <div class="shdr"><div class="stitle" id="um-title">Add User</div><button class="xbtn" onclick="closeOv('user')">✕</button></div>
+    <div class="sbody">
+      <input type="hidden" id="um-id">
+      <div class="fg"><label class="fl">Full Name</label><input class="fi" id="um-name" placeholder="e.g. John Smith"></div>
+      <div class="fg"><label class="fl">Role</label>
+        <select class="fs" id="um-role">
+          <option value="stager">Stager</option>
+          <option value="supervisor">Supervisor</option>
+          <option value="manager">Manager</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl" id="um-pin-lbl">PIN (4–8 digits)</label><input class="fi" id="um-pin" placeholder="e.g. 1234" maxlength="32" type="password"></div>
+      <p style="font-size:.68rem;color:var(--mut);margin-bottom:12px">Admin can use letters + numbers for a stronger password.</p>
+      <button class="btn btn-gold btn-full" onclick="saveUser()">Save User</button>
+    </div>
+  </div>
+</div>
+
+<!-- Aisle modal -->
+<div class="ov" id="ov-aisle" onclick="if(event.target===this)closeOv('aisle')">
+  <div class="sheet" style="max-height:75dvh">
+    <div class="shdr"><div class="stitle" id="am-title">Add Aisle</div><button class="xbtn" onclick="closeOv('aisle')">✕</button></div>
+    <div class="sbody">
+      <input type="hidden" id="am-orig">
+      <div class="fr">
+        <div class="fg"><label class="fl">Aisle ID</label><input class="fi" id="am-id" placeholder="A"></div>
+        <div class="fg"><label class="fl">Label</label><input class="fi" id="am-label" placeholder="Aisle A"></div>
+      </div>
+      <div class="fg"><label class="fl">Department</label>
+        <select class="fs" id="am-dept"><option>Packaging</option><option>Brewing</option><option>Blending</option></select>
+      </div>
+      <div class="fg"><label class="fl">Description</label><input class="fi" id="am-desc" placeholder="What is stored here?"></div>
+      <button class="btn btn-gold btn-full" onclick="saveAisle()">Save Aisle</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const ROOT='';
+const ROOT='../';
 const SURL='https://xrxuacrzcnsjrriidobs.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeHVhY3J6Y25zanJyaWlkb2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzE4MzksImV4cCI6MjA5NjI0NzgzOX0._AhK7L6NrCFazVcNpsY43z0J9VpktJ6cHYoRBVOAwVM';
 const APP='https://curity-whse.github.io/forklift';
@@ -246,63 +319,154 @@ function toast(msg,type){
   clearTimeout(t._t);t._t=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateX(-50%) translateY(20px)';},3000);
 }
 
-let sel=null,pin='';
-function renderNames(){
-  const list=document.getElementById('namelist');
-  list.innerHTML='';
-  getUsers().forEach(u=>{
-    const b=document.createElement('button');
-    b.className='nbtn';b.textContent=u.name;
-    b.onclick=()=>{document.querySelectorAll('.nbtn').forEach(x=>x.classList.remove('on'));b.classList.add('on');sel=u;document.getElementById('err1').textContent='';}
-    list.appendChild(b);
-  });
+const EQUIP=[
+  {id:'FL-01',name:'Forklift 1'},{id:'FL-02',name:'Forklift 2'},
+  {id:'FL-03',name:'Forklift 3'},{id:'FL-04',name:'Forklift 4'},
+  {id:'DS-01',name:'Dock Stopper'},
+  {id:'PW-01',name:'Walkie 1'},{id:'PW-02',name:'Walkie 2'},{id:'PW-03',name:'Walkie 3'}
+];
+const SITE='https://curity-whse.github.io/forklift';
+
+window.onload=()=>{
+  requireAuth(['admin']);
+  renderUsers();renderAisles();generateEquipQR();generateAisleQR();loadStats();
+};
+
+async function loadStats(){
+  const [a,b,c,d]=await Promise.all([
+    db.from('bbw_staged').select('id',{count:'exact',head:true}).eq('status','active'),
+    db.from('bbw_transactions').select('id',{count:'exact',head:true}),
+    db.from('bbw_inventory').select('id',{count:'exact',head:true}),
+    db.from('inspections').select('id',{count:'exact',head:true})
+  ]);
+  document.getElementById('st-staged').textContent=a.count??'—';
+  document.getElementById('st-tx').textContent=b.count??'—';
+  document.getElementById('st-inv').textContent=c.count??'—';
+  document.getElementById('st-insp').textContent=d.count??'—';
 }
-function goStep2(){
-  if(!sel){document.getElementById('err1').textContent='Select a name first';return;}
-  document.getElementById('step1').classList.add('hidden');
-  document.getElementById('step2').classList.remove('hidden');
-  document.getElementById('step2title').textContent='Hi '+sel.name.split(' ')[0]+'!';
-  pin='';
-  if(sel.role==='admin'){
-    document.getElementById('numeric-ui').classList.add('hidden');
-    document.getElementById('alpha-ui').classList.remove('hidden');
-    setTimeout(()=>document.getElementById('alpha').focus(),80);
-  } else {
-    document.getElementById('numeric-ui').classList.remove('hidden');
-    document.getElementById('alpha-ui').classList.add('hidden');
-  }
-  renderDots();
+
+function renderUsers(){
+  const users=getUsers();
+  document.getElementById('user-list').innerHTML=users.map(u=>
+    '<div class="urow">'
+    +'<div><div class="uname">'+u.name+'<span class="rbdg rbdg-'+u.role+'">'+u.role+'</span></div>'
+    +'<div class="umeta" id="pin-row-'+u.id+'">'
+    +'<span style="cursor:pointer;color:var(--gold);font-size:.7rem" onclick="showPinEdit(''+u.id+'')">🔑 Change PIN</span>'
+    +'</div>'
+    +'<div id="pin-edit-'+u.id+'" class="hidden" style="display:none;align-items:center;gap:6px;margin-top:6px">'
+    +'<input class="fi" id="pin-inp-'+u.id+'" style="padding:6px 9px;font-size:.78rem" placeholder="New PIN" maxlength="32" type="password">'
+    +'<button class="btn btn-gold" style="padding:5px 9px;font-size:.72rem;white-space:nowrap" onclick="savePIN(''+u.id+'')">Save</button>'
+    +'<button class="btn btn-out" style="padding:5px 9px;font-size:.72rem" onclick="hidePinEdit(''+u.id+'')">✕</button>'
+    +'</div></div>'
+    +(u.id!=='admin'?'<button class="btn btn-r" style="padding:5px 9px;font-size:.7rem" onclick="delUser(''+u.id+'')">Remove</button>':'')
+    +'</div>'
+  ).join('');
 }
-function kp(v){
-  if(v==='del')pin=pin.slice(0,-1);
-  else if(v==='clr')pin='';
-  else if(pin.length<8)pin+=v;
-  renderDots();
-  document.getElementById('err2').textContent='';
+
+function showPinEdit(id){const e=document.getElementById('pin-edit-'+id);e.classList.remove('hidden');e.style.display='flex';}
+function hidePinEdit(id){const e=document.getElementById('pin-edit-'+id);e.classList.add('hidden');e.style.display='none';}
+function savePIN(id){
+  const v=document.getElementById('pin-inp-'+id).value.trim();
+  if(!v||v.length<4){toast('PIN must be at least 4 characters','error');return;}
+  const users=getUsers();const u=users.find(x=>x.id===id);if(!u)return;
+  u.pin=v;saveUsers(users);toast('PIN updated for '+u.name,'success');hidePinEdit(id);renderUsers();
 }
-function renderDots(){
-  const c=document.getElementById('pdots');c.innerHTML='';
-  for(let i=0;i<8;i++){const d=document.createElement('div');d.className='pdot'+(i<pin.length?' on':'');c.appendChild(d);}
+function delUser(id){
+  if(!confirm('Remove this user?'))return;
+  saveUsers(getUsers().filter(u=>u.id!==id));renderUsers();toast('User removed','success');
 }
-function back(){
-  document.getElementById('step2').classList.add('hidden');
-  document.getElementById('step1').classList.remove('hidden');
-  document.getElementById('err2').textContent='';
-  pin='';
+function openAddUser(){
+  document.getElementById('um-title').textContent='Add User';
+  document.getElementById('um-id').value='';
+  document.getElementById('um-name').value='';
+  document.getElementById('um-role').value='stager';
+  document.getElementById('um-pin').value='';
+  openOv('user');
 }
-function doLogin(){
-  const entered=sel.role==='admin'?document.getElementById('alpha').value:pin;
-  const u=getUsers().find(x=>x.id===sel.id);
-  if(!u||u.pin!==entered){
-    document.getElementById('err2').textContent='Wrong PIN';
-    pin='';renderDots();
-    if(sel.role==='admin')document.getElementById('alpha').value='';
-    return;
-  }
-  setSess(u);
-  window.location.href=u.role==='admin'?'pages/admin.html':'pages/app.html';
+function saveUser(){
+  const name=document.getElementById('um-name').value.trim();
+  const role=document.getElementById('um-role').value;
+  const pin=document.getElementById('um-pin').value.trim();
+  if(!name){toast('Enter a name','error');return;}
+  if(!pin||pin.length<4){toast('PIN must be at least 4 characters','error');return;}
+  const users=getUsers();
+  const id=name.toLowerCase().replace(/\s+/g,'-')+'-'+Date.now().toString(36);
+  users.push({id,name,role,pin});
+  saveUsers(users);toast(name+' added','success');closeOv('user');renderUsers();
 }
-renderNames();renderDots();
-const s=getSess();if(s)window.location.href=s.role==='admin'?'pages/admin.html':'pages/app.html';
+
+function renderAisles(){
+  const aisles=getAisles();
+  const dc={Packaging:'bdg-p',Brewing:'bdg-b',Blending:'bdg-l'};
+  document.getElementById('aisle-list').innerHTML=aisles.map(a=>
+    '<div class="arow">'
+    +'<div class="aid2">'+a.id+'</div>'
+    +'<div class="ainfo"><div>'+a.label+'</div><div class="adept"><span class="bdg '+(dc[a.dept]||'')+'">'+a.dept+'</span>'+(a.desc?' · '+a.desc:'')+'</div></div>'
+    +'<div style="display:flex;gap:5px">'
+    +'<button class="btn btn-out" style="padding:4px 8px;font-size:.7rem" onclick='editAisle('+JSON.stringify(a).replace(/'/g,"&#39;")+')'>Edit</button>'
+    +'<button class="btn btn-r" style="padding:4px 8px;font-size:.7rem" onclick="delAisle(''+a.id+'')">✕</button>'
+    +'</div></div>'
+  ).join('');
+}
+function openAddAisle(){
+  document.getElementById('am-title').textContent='Add Aisle';
+  document.getElementById('am-orig').value='';
+  ['am-id','am-label','am-desc'].forEach(x=>document.getElementById(x).value='');
+  document.getElementById('am-dept').value='Packaging';
+  openOv('aisle');
+}
+function editAisle(a){
+  document.getElementById('am-title').textContent='Edit Aisle';
+  document.getElementById('am-orig').value=a.id;
+  document.getElementById('am-id').value=a.id;
+  document.getElementById('am-label').value=a.label;
+  document.getElementById('am-dept').value=a.dept;
+  document.getElementById('am-desc').value=a.desc||'';
+  openOv('aisle');
+}
+function saveAisle(){
+  const orig=document.getElementById('am-orig').value;
+  const id=document.getElementById('am-id').value.trim().toUpperCase();
+  const label=document.getElementById('am-label').value.trim();
+  if(!id||!label){toast('ID and Label required','error');return;}
+  const aisles=getAisles();
+  const rec={id,label,dept:document.getElementById('am-dept').value,desc:document.getElementById('am-desc').value.trim()};
+  if(orig){const i=aisles.findIndex(a=>a.id===orig);if(i>=0)aisles[i]=rec;}
+  else{if(aisles.find(a=>a.id===id)){toast('ID already exists','error');return;}aisles.push(rec);}
+  saveAisles(aisles);toast('Aisle saved','success');closeOv('aisle');renderAisles();generateAisleQR();
+}
+function delAisle(id){
+  if(!confirm('Delete aisle '+id+'?'))return;
+  saveAisles(getAisles().filter(a=>a.id!==id));renderAisles();generateAisleQR();toast('Aisle removed','success');
+}
+
+function makeQR(container,url,title,sub){
+  const card=document.createElement('div');card.className='qcard';
+  card.innerHTML='<div class="qcard-title">'+title+'</div><div class="qcard-sub">'+sub+'</div><div class="qwrap"><div id="q_'+title.replace(/[^a-z0-9]/gi,'_')+'"></div></div>';
+  const dlBtn=document.createElement('button');dlBtn.className='btn btn-out btn-full';dlBtn.style.marginTop='0';dlBtn.textContent='⬇ Download';
+  card.appendChild(dlBtn);container.appendChild(card);
+  setTimeout(()=>{
+    const inner=card.querySelector('.qwrap > div');
+    new QRCode(inner,{text:url,width:110,height:110,colorDark:'#000',colorLight:'#fff'});
+    dlBtn.onclick=()=>{
+      setTimeout(()=>{
+        const img=inner.querySelector('img')||inner.querySelector('canvas');
+        if(!img)return;const a=document.createElement('a');
+        a.href=img.tagName==='CANVAS'?img.toDataURL():img.src;
+        a.download='QR-'+title+'.png';a.click();
+      },200);
+    };
+  },50);
+}
+function generateEquipQR(){
+  const g=document.getElementById('equip-qr');g.innerHTML='';
+  EQUIP.forEach(e=>makeQR(g,SITE+'/pages/inspect.html?equip='+e.id,e.id,e.name));
+}
+function generateAisleQR(){
+  const g=document.getElementById('aisle-qr');g.innerHTML='';
+  getAisles().forEach(a=>makeQR(g,SITE+'/pages/app.html?aisle='+a.id,a.id,a.label+' · '+a.dept));
+}
+function openOv(id){document.getElementById('ov-'+id).classList.add('on');document.body.style.overflow='hidden';}
+function closeOv(id){document.getElementById('ov-'+id).classList.remove('on');document.body.style.overflow='';}
 </script>
 </body></html>
