@@ -607,7 +607,9 @@ textarea.fi{resize:vertical;min-height:56px}
 const ROOT = '';
 const SURL='https://xrxuacrzcnsjrriidobs.supabase.co';
 const SKEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhyeHVhY3J6Y25zanJyaWlkb2JzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA2NzE4MzksImV4cCI6MjA5NjI0NzgzOX0._AhK7L6NrCFazVcNpsY43z0J9VpktJ6cHYoRBVOAwVM';
-const db=supabase.createClient(SURL,SKEY);
+let _db=null;
+function getDB(){if(!_db)_db=supabase.createClient(SURL,SKEY);return _db;}
+const db={from:(t)=>getDB().from(t)};
 function getUsers(){
   const d=[{id:'admin',name:'Admin',role:'admin',pin:'admin123'},{id:'mgr1',name:'Manager',role:'manager',pin:'1111'},{id:'sup1',name:'Supervisor',role:'supervisor',pin:'2222'},{id:'stg1',name:'Stager',role:'stager',pin:'3333'}];
   try{
