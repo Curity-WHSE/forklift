@@ -49,7 +49,7 @@ html,body{height:100%;background:var(--bg);color:var(--txt);font-family:-apple-s
 .alpha-input:focus{border-color:var(--gold)}
 .btn-signin{width:100%;padding:14px;background:var(--gold);border:none;border-radius:7px;font-size:.95rem;font-weight:700;color:#000;cursor:pointer;font-family:inherit;letter-spacing:.02em}
 .btn-signin:hover{background:#ddb95a}
-.lerr{color:var(--red);font-size:.78rem;text-align:center;min-height:18px;margin-top:9px}
+.lerr{color:var(--red);font-size:.78rem;text-align:center;min-height:18px;margin-top:9px}.dd-opt:hover{background:#2a2a2a!important}
 
 /* ── TOP NAV ── */
 .topnav{position:fixed;top:0;left:0;right:0;height:var(--nav-h);background:#0a0a0a;border-bottom:1px solid #1e1e1e;display:flex;align-items:center;z-index:200;padding:0 14px;gap:10px}
@@ -261,13 +261,19 @@ textarea.fi{resize:vertical;min-height:56px}
     </div>
     <div class="login-card-body">
       <label class="lbl">Select Your Name</label>
-      <select id="login-sel" class="lsel" onchange="onUserChange()">
-        <option value="">— Select your name —</option>
-        <option value="admin">Admin (admin)</option>
-        <option value="mgr1">Manager (manager)</option>
-        <option value="sup1">Supervisor (supervisor)</option>
-        <option value="stg1">Stager (stager)</option>
-      </select>
+      <div style="position:relative;margin-bottom:20px">
+        <div id="dd-btn" onclick="toggleDD()" style="width:100%;background:#141414;border:1px solid #3d3d3d;border-radius:7px;color:#e8e8e8;font-size:1rem;padding:13px 40px 13px 14px;cursor:pointer;user-select:none;position:relative">
+          <span id="dd-label" style="color:#666">— Select your name —</span>
+          <span style="position:absolute;right:14px;top:50%;transform:translateY(-50%);color:#666;font-size:.8rem">▼</span>
+        </div>
+        <div id="dd-list" style="display:none;position:absolute;top:calc(100% + 4px);left:0;right:0;background:#1e1e1e;border:1px solid #3d3d3d;border-radius:7px;z-index:100;overflow:hidden;box-shadow:0 8px 24px rgba(0,0,0,.5)">
+          <div class="dd-opt" onclick="selectUser('','— Select your name —')" style="padding:13px 14px;cursor:pointer;color:#666;font-size:1rem;border-bottom:1px solid #2a2a2a">— Select your name —</div>
+          <div class="dd-opt" onclick="selectUser('admin','Admin')" style="padding:13px 14px;cursor:pointer;color:#e8e8e8;font-size:1rem;border-bottom:1px solid #2a2a2a">Admin</div>
+          <div class="dd-opt" onclick="selectUser('mgr1','Manager')" style="padding:13px 14px;cursor:pointer;color:#e8e8e8;font-size:1rem;border-bottom:1px solid #2a2a2a">Manager</div>
+          <div class="dd-opt" onclick="selectUser('sup1','Supervisor')" style="padding:13px 14px;cursor:pointer;color:#e8e8e8;font-size:1rem;border-bottom:1px solid #2a2a2a">Supervisor</div>
+          <div class="dd-opt" onclick="selectUser('stg1','Stager')" style="padding:13px 14px;cursor:pointer;color:#e8e8e8;font-size:1rem">Stager</div>
+        </div>
+      </div>
       <div class="pin-wrap" id="pin-section">
         <div id="pin-numeric">
           <div class="pin-lbl">Enter PIN</div>
@@ -574,6 +580,13 @@ function showScreen(id){
 }
 
 // ── BOOT ──────────────────────────────────────────────────────────────
+document.addEventListener('click',function(e){
+  const btn=document.getElementById('dd-btn');
+  const list=document.getElementById('dd-list');
+  if(btn&&list&&!btn.contains(e.target)&&!list.contains(e.target)){
+    list.style.display='none';
+  }
+});
 window.addEventListener('DOMContentLoaded', function(){
   // QR scan path: ?equip=FL-01 or ?aisle=A
   const p=new URLSearchParams(window.location.search);
@@ -605,24 +618,52 @@ window.addEventListener('DOMContentLoaded', function(){
 let selUser=null, pin='';
 
 function initLogin(){
-  const sel=document.getElementById('login-sel');
+  // Rebuild dropdown from localStorage users if available
   const users=getUsers();
-  while(sel.options.length>1) sel.remove(1);
-  users.forEach(function(u){
-    const o=document.createElement('option');
-    o.value=u.id; o.textContent=u.name+' ('+u.role+')';
-    sel.appendChild(o);
-  });
+  const list=document.getElementById('dd-list');
+  if(list && users.length > 4){
+    // More users than defaults - rebuild
+    list.innerHTML='<div class="dd-opt" onclick="selectUser(\'\',\'— Select your name —\')" style="padding:13px 14px;cursor:pointer;color:#666;font-size:1rem;border-bottom:1px solid #2a2a2a">— Select your name —</div>';
+    users.forEach(function(u,i){
+      const d=document.createElement('div');
+      d.className='dd-opt';
+      d.style.cssText='padding:13px 14px;cursor:pointer;color:#e8e8e8;font-size:1rem'+(i<users.length-1?';border-bottom:1px solid #2a2a2a':'');
+      d.textContent=u.name;
+      d.onclick=function(){selectUser(u.id,u.name);};
+      list.appendChild(d);
+    });
+  }
   pin=''; selUser=null;
   document.getElementById('pin-section').style.display='none';
+  document.getElementById('dd-label').textContent='— Select your name —';
+  document.getElementById('dd-label').style.color='#666';
   renderDots();
 }
 
 
-function onUserChange(){
-  const id=document.getElementById('login-sel').value;
-  if(!id){selUser=null;document.getElementById('pin-section').style.display='none';return;}
+function toggleDD(){
+  const list=document.getElementById('dd-list');
+  list.style.display=list.style.display==='none'?'block':'none';
+}
+function selectUser(id,name){
+  document.getElementById('dd-list').style.display='none';
+  const lbl=document.getElementById('dd-label');
+  if(!id){
+    lbl.textContent='— Select your name —';
+    lbl.style.color='#666';
+    selUser=null;
+    document.getElementById('pin-section').style.display='none';
+    return;
+  }
+  lbl.textContent=name;
+  lbl.style.color='#e8e8e8';
   selUser=getUsers().find(function(u){return u.id===id;});
+  if(!selUser){
+    // fallback for hardcoded users not yet in localStorage
+    const roles={admin:'admin',mgr1:'manager',sup1:'supervisor',stg1:'stager'};
+    const names={admin:'Admin',mgr1:'Manager',sup1:'Supervisor',stg1:'Stager'};
+    selUser={id:id,name:names[id]||name,role:roles[id]||'stager',pin:id==='admin'?'admin123':id==='mgr1'?'1111':id==='sup1'?'2222':'3333'};
+  }
   pin=''; renderDots();
   document.getElementById('lerr').textContent='';
   document.getElementById('pin-section').style.display='block';
@@ -631,6 +672,7 @@ function onUserChange(){
   document.getElementById('pin-alpha').classList.toggle('hidden',!isAdmin);
   if(isAdmin) setTimeout(function(){document.getElementById('alpha-in').focus();},60);
 }
+function onUserChange(){}
 
 function kp(v){
   if(v==='del') pin=pin.slice(0,-1);
