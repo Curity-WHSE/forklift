@@ -562,6 +562,21 @@ function showScr(id){
 
 // ── BOOT ──────────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded',function(){
+  // Clear old storage keys from previous versions
+  ['bbw_users','bbw_aisles','bbw_skus','bbw_sess','bbw_s'].forEach(function(k){
+    // Only clear if it looks like old format (no username field)
+    if(k==='bbw_users'||k==='bbw_u'){
+      try{
+        var r=localStorage.getItem(k);
+        if(r&&r!=='null'){
+          var p=JSON.parse(r);
+          if(Array.isArray(p)&&p.length&&!p[0].username){
+            localStorage.removeItem(k);
+          }
+        }
+      }catch(e){}
+    }
+  });
   var p=new URLSearchParams(window.location.search);
   var equip=p.get('equip'),aisle=p.get('aisle');
   if(equip){showScr('inspect');initInsp(equip);return;}
@@ -572,7 +587,18 @@ window.addEventListener('DOMContentLoaded',function(){
     catch(e){killSess();showScr('login');initLogin();}
   } else {
     killSess();showScr('login');
-    setTimeout(function(){var u=document.getElementById('l-user');if(u)u.focus();},100);
+    // Clear potentially corrupt stored users so defaults always work
+try{
+  var su=localStorage.getItem('bbw_u');
+  if(su&&su!=='null'){
+    var parsed=JSON.parse(su);
+    // If stored users don't have pins, clear them
+    if(!Array.isArray(parsed)||!parsed[0]||!parsed[0].pin){
+      localStorage.removeItem('bbw_u');
+    }
+  }
+}catch(e){localStorage.removeItem('bbw_u');}
+setTimeout(function(){var u=document.getElementById('l-user');if(u)u.focus();},100);
   }
 });
 
@@ -626,7 +652,11 @@ function doLogin(){
   var pass=document.getElementById('l-pass').value;
   if(!user||!pass){document.getElementById('lerr').textContent='Enter username and password';return;}
   var users=getUsers();
-  var u=users.find(function(x){return x.username===user||x.id===user||x.name.toLowerCase()===user;});
+  var u=users.find(function(x){
+    return (x.username||'').toLowerCase()===user
+        || (x.id||'').toLowerCase()===user
+        || (x.name||'').toLowerCase()===user;
+  });
   if(!u||u.pin!==pass){
     document.getElementById('lerr').textContent='Incorrect username or password';
     document.getElementById('l-pass').value='';
